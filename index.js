@@ -76,7 +76,9 @@ function analyzeSignal(closes) {
 app.get('/api/price/:symbol', async (req, res) => {
   try {
     const data = await binanceRequest('GET', 'ticker/price', { symbol: req.params.symbol.toUpperCase() });
-    res.json({ price: parseFloat(data.price) });
+    const price = parseFloat(data.price);
+if (!price || isNaN(price)) return res.status(500).json({ error: 'Prix invalide' });
+res.json({ price });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
