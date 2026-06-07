@@ -216,7 +216,7 @@ async function analyze() {
 
     // Mettre à jour affichage prix
     const prev = chartPrices[chartPrices.length - 1] || price;
-    document.getElementById('price-display').textContent = '$' + price.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    document.getElementById('price-display').textContent = '$' + (parseFloat(price) || 0).toFixed(2);
     document.getElementById('price-display').style.color = price >= prev ? 'var(--green)' : 'var(--red)';
     chartPrices.push(price);
     if (chartPrices.length > 50) chartPrices.shift();
