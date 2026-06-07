@@ -11,7 +11,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const API_KEY    = process.env.BINANCE_API_KEY    || '';
 const API_SECRET = process.env.BINANCE_API_SECRET || '';
-const BASE_URL   = 'api.binance.com';
 
 function binanceRequest(method, endpoint, params = {}, signed = false) {
   return new Promise((resolve, reject) => {
@@ -23,10 +22,14 @@ function binanceRequest(method, endpoint, params = {}, signed = false) {
       query += `&signature=${signature}`;
     }
     const options = {
-      hostname: BASE_URL,
+      hostname: 'api.binance.com',
       path: `/api/v3/${endpoint}${query ? '?' + query : ''}`,
       method,
-      headers: { 'X-MBX-APIKEY': API_KEY, 'Content-Type': 'application/json' },
+      headers: {
+        'X-MBX-APIKEY': API_KEY,
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
     };
     const req = https.request(options, res => {
       let data = '';
@@ -77,8 +80,8 @@ app.get('/api/price/:symbol', async (req, res) => {
   try {
     const data = await binanceRequest('GET', 'ticker/price', { symbol: req.params.symbol.toUpperCase() });
     const price = parseFloat(data.price);
-if (!price || isNaN(price)) return res.status(500).json({ error: 'Prix invalide' });
-res.json({ price });
+    if (!price || isNaN(price)) return res.status(500).json({ error: 'Prix invalide' });
+    res.json({ price });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -94,7 +97,8 @@ app.get('/api/analyze/:symbol', async (req, res) => {
 app.get('/api/balance', async (req, res) => {
   try {
     const data = await binanceRequest('GET', 'account', {}, true);
-    const balances = data.balances.filter(b => parseFloat(b.free) > 0 || parseFloat(b.locked) > 0)
+    const balances = data.balances
+      .filter(b => parseFloat(b.free) > 0 || parseFloat(b.locked) > 0)
       .map(b => ({ asset: b.asset, free: parseFloat(b.free), locked: parseFloat(b.locked) }));
     res.json({ balances });
   } catch (e) { res.status(500).json({ error: e.message }); }
