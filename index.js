@@ -9,9 +9,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const API_KEY    = process.env.BINANCE_API_KEY    || '';
-const API_SECRET = process.env.BINANCE_API_SECRET || '';
+const API_KEY         = process.env.BINANCE_API_KEY    || '';
+const API_SECRET      = process.env.BINANCE_API_SECRET || '';
+const TELEGRAM_TOKEN  = process.env.TELEGRAM_TOKEN     || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID  || '';
 
+// ─── Telegram ────────────────────────────────────────────
+function sendTelegram(message) {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const text = encodeURIComponent(message);
+  const options = {
+    hostname: 'api.telegram.org',
+    path: `/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${text}&parse_mode=HTML`,
+    method: 'GET',
+  };
+  const req = https.request(options, () => {});
+  req.on('error', () => {});
+  req.end();
+}
+
+// ─── Binance ─────────────────────────────────────────────
 function binanceRequest(method, endpoint, params = {}, signed = false) {
   return new Promise((resolve, reject) => {
     let query = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&');
@@ -44,6 +61,7 @@ function binanceRequest(method, endpoint, params = {}, signed = false) {
   });
 }
 
+// ─── Analyse ─────────────────────────────────────────────
 function calcRSI(prices, period = 14) {
   if (prices.length < period + 1) return 50;
   let gains = 0, losses = 0;
@@ -62,23 +80,34 @@ function calcMA(prices, period) {
 }
 
 function analyzeSignal(closes) {
-  const rsi  = calcRSI(closes);
-  const ma7  = calcMA(closes, 7);
-  const ma25 = calcMA(closes, 25);
-  const ma99 = calcMA(closes, 99);
+  const rsi   = calcRSI(closes);
+  const ma7   = calcMA(closes, 7);
+  const ma25  = calcMA(closes, 25);
+  const ma99  = calcMA(closes, 99);
   const trend = ma7 > ma25 ? 'HAUSSIÈRE' : 'BAISSIÈRE';
-  let signal = null;
+  let signal  = null;
   if (rsi < 30 && ma7 > ma25) {
-    signal = { action: 'ACHETER', confidence: Math.min(95, Math.round(75 + (30 - rsi))), reason: `RSI survendu (${rsi}) + tendance ${trend}. Bon point d'entrée.`, rsi, ma7, ma25, trend };
+    signal = {
+      action: 'ACHETER',
+      confidence: Math.min(95, Math.round(75 + (30 - rsi))),
+      reason: `RSI survendu (${rsi}) + tendance ${trend}. Bon point d'entrée.`,
+      rsi, ma7, ma25, trend,
+    };
   } else if (rsi > 70 && ma7 < ma25) {
-    signal = { action: 'VENDRE', confidence: Math.min(95, Math.round(75 + (rsi - 70))), reason: `RSI suracheté (${rsi}) + tendance ${trend}. Moment de prendre les profits.`, rsi, ma7, ma25, trend };
+    signal = {
+      action: 'VENDRE',
+      confidence: Math.min(95, Math.round(75 + (rsi - 70))),
+      reason: `RSI suracheté (${rsi}) + tendance ${trend}. Moment de prendre les profits.`,
+      rsi, ma7, ma25, trend,
+    };
   }
   return { signal, rsi, ma7, ma25, ma99, trend };
 }
 
+// ─── Routes ──────────────────────────────────────────────
 app.get('/api/price/:symbol', async (req, res) => {
   try {
-    const data = await binanceRequest('GET', 'ticker/price', { symbol: req.params.symbol.toUpperCase() });
+    const data  = await binanceRequest('GET', 'ticker/price', { symbol: req.params.symbol.toUpperCase() });
     const price = parseFloat(data.price);
     if (!price || isNaN(price)) return res.status(500).json({ error: 'Prix invalide' });
     res.json({ price });
@@ -88,15 +117,30 @@ app.get('/api/price/:symbol', async (req, res) => {
 app.get('/api/analyze/:symbol', async (req, res) => {
   try {
     const interval = req.query.interval || '1h';
-    const data = await binanceRequest('GET', 'klines', { symbol: req.params.symbol.toUpperCase(), interval, limit: 150 });
-    const closes = data.map(k => parseFloat(k[4]));
-    res.json(analyzeSignal(closes));
+    const data     = await binanceRequest('GET', 'klines', { symbol: req.params.symbol.toUpperCase(), interval, limit: 150 });
+    const closes   = data.map(k => parseFloat(k[4]));
+    const result   = analyzeSignal(closes);
+
+    // Envoyer notification Telegram si signal détecté
+    if (result.signal) {
+      const emoji = result.signal.action === 'ACHETER' ? '🟢' : '🔴';
+      const msg = `${emoji} <b>SIGNAL: ${result.signal.action}</b>\n\n` +
+        `📊 Paire: ${req.params.symbol.toUpperCase()}\n` +
+        `💰 Prix: $${closes[closes.length-1].toFixed(2)}\n` +
+        `📈 RSI: ${result.signal.rsi}\n` +
+        `🎯 Confiance: ${result.signal.confidence}%\n\n` +
+        `📝 ${result.signal.reason}\n\n` +
+        `⚠️ Ouvrez votre bot pour confirmer !`;
+      sendTelegram(msg);
+    }
+
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/balance', async (req, res) => {
   try {
-    const data = await binanceRequest('GET', 'account', {}, true);
+    const data     = await binanceRequest('GET', 'account', {}, true);
     const balances = data.balances
       .filter(b => parseFloat(b.free) > 0 || parseFloat(b.locked) > 0)
       .map(b => ({ asset: b.asset, free: parseFloat(b.free), locked: parseFloat(b.locked) }));
@@ -108,8 +152,14 @@ app.post('/api/order', async (req, res) => {
   try {
     const { symbol, side, quantity } = req.body;
     const order = await binanceRequest('POST', 'order', {
-      symbol: symbol.toUpperCase(), side: side.toUpperCase(), type: 'MARKET', quantity: parseFloat(quantity).toFixed(6),
+      symbol: symbol.toUpperCase(), side: side.toUpperCase(), type: 'MARKET',
+      quantity: parseFloat(quantity).toFixed(6),
     }, true);
+
+    // Notification Telegram après ordre exécuté
+    const emoji = side === 'BUY' ? '✅' : '💰';
+    sendTelegram(`${emoji} <b>ORDRE EXÉCUTÉ</b>\n\nAction: ${side}\nPaire: ${symbol}\nQuantité: ${quantity}`);
+
     res.json({ success: true, order });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -119,4 +169,7 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Bot démarré sur le port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Bot démarré sur le port ${PORT}`);
+  sendTelegram('🚀 <b>Crypto Bot démarré !</b>\n\nVotre bot est en ligne et surveille le marché.\nVous recevrez une notification quand un signal sera détecté.');
+});
