@@ -17,6 +17,16 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 function sendTelegram(msg) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
   const text = encodeURIComponent(msg);
+  const req = https.request({hostname:'api.telegram.org',path:`/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${text}`,method:'GET'},()=>{});
+  req.on('error',()=>{});
+  req.end();
+}
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
+
+function sendTelegram(msg) {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const text = encodeURIComponent(msg);
   const req = https.request({
     hostname: 'api.telegram.org',
     path: `/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${text}&parse_mode=HTML`,
