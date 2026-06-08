@@ -1,179 +1,240 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Crypto Bot — Binance</title>
+<title>Crypto Bot Pro</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --green:#00e676;--red:#ff5252;--yellow:#ffd740;--blue:#64b5f6;
-  --bg:#080b10;--card:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.07);
-}
-body{background:var(--bg);color:#ddd;font-family:'JetBrains Mono',monospace;min-height:100vh;padding:16px}
-h1{font-family:'Orbitron',monospace;font-size:20px;color:var(--green);letter-spacing:3px;text-align:center;margin-bottom:4px}
-.sub{text-align:center;font-size:10px;color:#445;letter-spacing:2px;margin-bottom:20px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px}
-label{font-size:10px;color:#556;letter-spacing:1px;display:block;margin-bottom:6px}
-input,select{background:rgba(255,255,255,0.05);border:1px solid var(--border);color:#fff;padding:11px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;outline:none;transition:border .2s}
+:root{--green:#00e676;--red:#ff5252;--yellow:#ffd740;--blue:#64b5f6;--purple:#ce93d8;--bg:#080b10;--card:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.07)}
+body{background:var(--bg);color:#ddd;font-family:'JetBrains Mono',monospace;min-height:100vh;padding:12px}
+h1{font-family:'Orbitron',monospace;font-size:18px;color:var(--green);letter-spacing:3px;text-align:center;margin-bottom:2px}
+.sub{text-align:center;font-size:9px;color:#445;letter-spacing:2px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.card-title{font-size:10px;color:var(--green);letter-spacing:1px;margin-bottom:10px}
+label{font-size:10px;color:#556;letter-spacing:1px;display:block;margin-bottom:5px}
+input,select{background:rgba(255,255,255,0.05);border:1px solid var(--border);color:#fff;padding:10px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;width:100%;outline:none}
 input:focus,select:focus{border-color:var(--green)}
 select option{background:#0d1117}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
-.mb{margin-bottom:12px}
-.btn{border:none;padding:13px;border-radius:9px;font-family:'Orbitron',monospace;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:1px;transition:all .2s;width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.btn{border:none;padding:12px;border-radius:8px;font-family:'Orbitron',monospace;font-weight:700;font-size:11px;cursor:pointer;letter-spacing:1px;transition:all .2s;width:100%}
 .btn-g{background:linear-gradient(135deg,#00e676,#00c853);color:#000}
-.btn-g:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,230,118,.4)}
+.btn-g:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,230,118,.4)}
 .btn-r{background:linear-gradient(135deg,#ff5252,#c62828);color:#fff}
-.btn-r:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,82,82,.4)}
 .btn-o{background:rgba(255,255,255,0.07);color:#aaa;border:1px solid var(--border)}
-.btn-o:hover{background:rgba(255,255,255,0.12)}
-.ind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.ind{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
-.ind .lbl{font-size:9px;color:#445;margin-bottom:4px;letter-spacing:1px}
-.ind .val{font-size:16px;font-weight:700}
-.price-big{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;margin:4px 0}
-.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.ind{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
+.ind .lbl{font-size:9px;color:#445;margin-bottom:3px}
+.ind .val{font-size:13px;font-weight:700}
+.price-big{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;margin:4px 0}
+.log-box{background:#000;border:1px solid var(--border);border-radius:8px;padding:10px;height:150px;overflow-y:auto;font-size:10px;line-height:1.8}
+.log-g{color:var(--green)}.log-r{color:var(--red)}.log-y{color:var(--yellow)}.log-d{color:#445}.log-b{color:var(--blue)}
+.signal-box{border-radius:12px;padding:16px;margin-bottom:10px;animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.hidden{display:none}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:9px;letter-spacing:1px}
+.tf-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:10px}
+.tf-item{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px;text-align:center;font-size:9px}
+.tf-item .tf-name{color:#445;margin-bottom:2px}
+.tf-item .tf-signal{font-weight:700;font-size:10px}
+.score-bar{height:6px;border-radius:3px;background:rgba(255,255,255,0.1);margin:4px 0;overflow:hidden}
+.score-fill{height:100%;border-radius:3px;transition:width .5s}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
+.stat-val{font-size:16px;font-weight:700;color:var(--green)}
+.stat-lbl{font-size:9px;color:#445;margin-top:2px}
+.reason-list{font-size:10px;color:#aaa;line-height:2}
 .blink{animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-.pulse{animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.log-box{background:#000;border:1px solid var(--border);border-radius:10px;padding:12px;height:160px;overflow-y:auto;font-size:11px;line-height:1.7}
-.log-box::-webkit-scrollbar{width:4px}
-.log-box::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
-.log-g{color:var(--green)}.log-r{color:var(--red)}.log-y{color:var(--yellow)}.log-d{color:#445}
-.signal-box{border-radius:14px;padding:18px;margin-bottom:12px;animation:slideIn .3s ease}
-@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;letter-spacing:1px;font-weight:600}
-.hidden{display:none}
-.bal-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
-.bal-row:last-child{border:none}
-.trend-up{color:var(--green)}.trend-dn{color:var(--red)}
-canvas{width:100%;height:80px;display:block;border-radius:8px;margin-top:8px}
+canvas{width:100%;height:70px;display:block;border-radius:6px;margin-top:6px}
+.tab-bar{display:flex;gap:6px;margin-bottom:10px}
+.tab{padding:8px 12px;border-radius:8px;font-size:10px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:#778;transition:all .2s}
+.tab.active{background:rgba(0,230,118,0.15);border-color:var(--green);color:var(--green)}
+.tab-content{display:none}
+.tab-content.active{display:block}
 </style>
 </head>
 <body>
+<h1>◈ CRYPTO BOT PRO</h1>
+<div class="sub">ANALYSE TECHNIQUE AVANCEE — BINANCE</div>
 
-<h1>◈ CRYPTO BOT</h1>
-<div class="sub">BINANCE — TRADING ASSISTANT</div>
-
-<!-- SETUP -->
 <div id="setup">
   <div class="card">
-    <div style="font-size:11px;color:var(--green);margin-bottom:14px;letter-spacing:1px">⚙ CONFIGURATION</div>
-    <div class="row">
-      <div>
-        <label>PAIRE</label>
+    <div class="card-title">⚙ CONFIGURATION</div>
+    <div class="grid2">
+      <div><label>PAIRE</label>
         <select id="pair">
           <option>BTCUSDT</option><option>ETHUSDT</option><option>BNBUSDT</option>
           <option>SOLUSDT</option><option>XRPUSDT</option><option>ADAUSDT</option>
         </select>
       </div>
-      <div>
-        <label>INTERVALLE</label>
+      <div><label>CAPITAL ($)</label><input type="number" id="capital" placeholder="Ex: 100" min="10"/></div>
+    </div>
+    <div class="grid2">
+      <div><label>TIMEFRAME PRINCIPAL</label>
         <select id="interval">
+          <option value="5m">5 min</option>
           <option value="15m">15 min</option>
           <option value="1h" selected>1 heure</option>
           <option value="4h">4 heures</option>
           <option value="1d">1 jour</option>
         </select>
       </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>BUDGET USDT ($)</label>
-        <input type="number" id="budget" placeholder="Ex: 50" min="10"/>
-      </div>
-      <div>
-        <label>% PAR TRADE</label>
-        <select id="pct">
-          <option value="0.2">20% — Faible risque</option>
-          <option value="0.35">35% — Moyen</option>
-          <option value="0.5">50% — Élevé</option>
+      <div><label>RISQUE PAR TRADE</label>
+        <select id="risk">
+          <option value="0.005">0.5% — Tres prudent</option>
+          <option value="0.01" selected>1% — Recommande</option>
+          <option value="0.02">2% — Agressif</option>
         </select>
       </div>
     </div>
-    <div class="mb">
-      <label>STOP LOSS %</label>
-      <select id="sl">
-        <option value="0.02">2% — Très prudent ⭐</option>
-        <option value="0.03">3% — Prudent</option>
-        <option value="0.05">5% — Normal</option>
-      </select>
-    </div>
-    <button class="btn btn-g" onclick="startBot()">▶ DÉMARRER LE BOT</button>
-  </div>
-  <div style="font-size:10px;color:#334;text-align:center;line-height:1.8">
-    ⚠ Assurez-vous que vos clés API sont dans le fichier .env<br>
-    Ne jamais activer la permission "Retrait" sur votre clé API
+    <button class="btn btn-g" onclick="startBot()">▶ DEMARRER LE BOT PRO</button>
   </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard" class="hidden">
-
-  <!-- Status -->
-  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
     <div>
-      <span class="status-dot blink" style="background:var(--green)"></span>
-      <span id="pair-label" style="font-size:13px;color:var(--green);font-weight:600"></span>
+      <span class="blink" style="color:var(--green);margin-right:6px">●</span>
+      <span id="pair-label" style="font-size:12px;color:var(--green);font-weight:700"></span>
     </div>
-    <div id="last-update" style="font-size:10px;color:#445"></div>
-    <button class="btn btn-o" style="width:auto;padding:8px 14px;font-size:10px" onclick="stopBot()">⏹ STOP</button>
+    <div id="last-update" style="font-size:9px;color:#445"></div>
+    <button class="btn btn-o" style="width:auto;padding:6px 12px;font-size:9px" onclick="stopBot()">⏹ STOP</button>
   </div>
 
-  <!-- Prix -->
-  <div class="card">
-    <label>PRIX ACTUEL</label>
-    <div id="price-display" class="price-big" style="color:var(--green)">—</div>
-    <canvas id="chart"></canvas>
+  <div class="tab-bar">
+    <div class="tab active" onclick="showTab('tab-price')">📊 PRIX</div>
+    <div class="tab" onclick="showTab('tab-multi')">🕐 MULTI-TF</div>
+    <div class="tab" onclick="showTab('tab-analysis')">🔬 ANALYSE</div>
+    <div class="tab" onclick="showTab('tab-journal')">📒 JOURNAL</div>
   </div>
 
-  <!-- Indicateurs -->
-  <div class="ind-grid">
-    <div class="ind">
-      <div class="lbl">RSI (14)</div>
-      <div class="val" id="rsi-val">—</div>
+  <!-- TAB PRIX -->
+  <div id="tab-price" class="tab-content active">
+    <div class="card">
+      <label>PRIX ACTUEL</label>
+      <div id="price-display" class="price-big" style="color:var(--green)">—</div>
+      <canvas id="chart"></canvas>
     </div>
-    <div class="ind">
-      <div class="lbl">MA 7</div>
-      <div class="val" style="color:var(--blue)" id="ma7-val">—</div>
+
+    <div class="grid3">
+      <div class="ind"><div class="lbl">RSI(14)</div><div class="val" id="rsi-val">—</div></div>
+      <div class="ind"><div class="lbl">MACD</div><div class="val" id="macd-val">—</div></div>
+      <div class="ind"><div class="lbl">ATR</div><div class="val" id="atr-val">—</div></div>
     </div>
-    <div class="ind">
-      <div class="lbl">MA 25</div>
-      <div class="val" style="color:#ba68c8" id="ma25-val">—</div>
+    <div class="grid3">
+      <div class="ind"><div class="lbl">EMA20</div><div class="val" style="color:var(--blue)" id="ema20-val">—</div></div>
+      <div class="ind"><div class="lbl">EMA50</div><div class="val" style="color:var(--purple)" id="ema50-val">—</div></div>
+      <div class="ind"><div class="lbl">EMA200</div><div class="val" style="color:var(--yellow)" id="ema200-val">—</div></div>
+    </div>
+    <div class="grid2">
+      <div class="ind"><div class="lbl">BB HAUTE</div><div class="val" id="bb-upper">—</div></div>
+      <div class="ind"><div class="lbl">BB BASSE</div><div class="val" id="bb-lower">—</div></div>
+    </div>
+    <div class="grid2">
+      <div class="ind"><div class="lbl">SUPPORT</div><div class="val" style="color:var(--green)" id="support-val">—</div></div>
+      <div class="ind"><div class="lbl">RESISTANCE</div><div class="val" style="color:var(--red)" id="resist-val">—</div></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:10px;color:#445">TENDANCE</span>
+        <span id="trend-val" style="font-size:12px;font-weight:700">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:10px;color:#445">SCORE HAUSSIER</span>
+        <span id="bull-score" style="font-size:11px;color:var(--green)">—</span>
+      </div>
+      <div class="score-bar"><div id="score-fill" class="score-fill" style="width:50%;background:var(--green)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span style="font-size:10px;color:#445">P&L ESTIME</span>
+        <span id="pnl-val" style="font-size:14px;font-weight:700">$0.00</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💰 SOLDE BINANCE</div>
+      <div id="balance-list" style="font-size:11px;color:#445">Chargement...</div>
+      <button class="btn btn-o" style="margin-top:8px;font-size:10px" onclick="loadBalance()">↻ Actualiser</button>
+    </div>
+
+    <div id="signal-box" class="hidden"></div>
+  </div>
+
+  <!-- TAB MULTI-TIMEFRAME -->
+  <div id="tab-multi" class="tab-content">
+    <div class="card">
+      <div class="card-title">🕐 ANALYSE MULTI-TIMEFRAME</div>
+      <div class="tf-grid" id="tf-grid">
+        <div class="tf-item"><div class="tf-name">5M</div><div class="tf-signal" id="tf-5m">—</div></div>
+        <div class="tf-item"><div class="tf-name">15M</div><div class="tf-signal" id="tf-15m">—</div></div>
+        <div class="tf-item"><div class="tf-name">1H</div><div class="tf-signal" id="tf-1h">—</div></div>
+        <div class="tf-item"><div class="tf-name">4H</div><div class="tf-signal" id="tf-4h">—</div></div>
+        <div class="tf-item"><div class="tf-name">1D</div><div class="tf-signal" id="tf-1d">—</div></div>
+      </div>
+      <div style="text-align:center;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px">
+        <div style="font-size:10px;color:#445;margin-bottom:4px">CONSENSUS GLOBAL</div>
+        <div id="consensus-val" style="font-size:18px;font-weight:700;font-family:Orbitron">—</div>
+        <div id="consensus-pct" style="font-size:11px;color:#778;margin-top:2px">—</div>
+      </div>
     </div>
   </div>
 
-  <!-- Tendance -->
-  <div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px">
-    <div>
-      <div style="font-size:10px;color:#445;margin-bottom:2px">TENDANCE</div>
-      <div id="trend-val" style="font-size:14px;font-weight:700">—</div>
+  <!-- TAB ANALYSE -->
+  <div id="tab-analysis" class="tab-content">
+    <div class="card">
+      <div class="card-title">🔬 SMART MONEY CONCEPTS</div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;color:#556">Order Block</span>
+        <span id="ob-val" style="font-size:10px;color:var(--yellow)">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;color:#556">Fair Value Gap</span>
+        <span id="fvg-val" style="font-size:10px;color:var(--yellow)">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;color:#556">Breakout</span>
+        <span id="breakout-val" style="font-size:10px">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0">
+        <span style="font-size:10px;color:#556">Pullback</span>
+        <span id="pullback-val" style="font-size:10px">—</span>
+      </div>
     </div>
-    <div style="text-align:right">
-      <div style="font-size:10px;color:#445;margin-bottom:2px">P&L ESTIMÉ</div>
-      <div id="pnl-val" style="font-size:16px;font-weight:700">$0.00</div>
+
+    <div class="card">
+      <div class="card-title">📐 FIBONACCI</div>
+      <div id="fib-levels" style="font-size:10px;line-height:2;color:#aaa">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✅ RAISONS DU SIGNAL</div>
+      <div id="reasons-list" class="reason-list">En attente de signal...</div>
     </div>
   </div>
 
-  <!-- Solde -->
-  <div class="card">
-    <div style="font-size:10px;color:var(--green);margin-bottom:10px;letter-spacing:1px">💰 SOLDE BINANCE</div>
-    <div id="balance-list"><div style="color:#445;font-size:12px">Chargement...</div></div>
-    <button class="btn btn-o" style="margin-top:10px;font-size:11px" onclick="loadBalance()">↻ Actualiser</button>
+  <!-- TAB JOURNAL -->
+  <div id="tab-journal" class="tab-content">
+    <div class="stat-grid" style="margin-bottom:10px">
+      <div class="stat-item"><div class="stat-val" id="winrate-val">0%</div><div class="stat-lbl">WIN RATE</div></div>
+      <div class="stat-item"><div class="stat-val" id="pf-val">0</div><div class="stat-lbl">PROFIT FACTOR</div></div>
+      <div class="stat-item"><div class="stat-val" id="trades-val">0</div><div class="stat-lbl">TOTAL TRADES</div></div>
+      <div class="stat-item"><div class="stat-val" id="totalpnl-val">$0</div><div class="stat-lbl">P&L TOTAL</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📒 HISTORIQUE</div>
+      <div id="journal-list" style="font-size:10px;color:#445;max-height:300px;overflow-y:auto">
+        Aucun trade enregistre
+      </div>
+    </div>
   </div>
-
-  <!-- Signal de confirmation -->
-  <div id="signal-box" class="hidden"></div>
 
   <!-- Journal -->
   <div class="card">
-    <div style="font-size:10px;color:#445;margin-bottom:8px;letter-spacing:1px">◈ JOURNAL</div>
+    <div class="card-title">◈ JOURNAL EN DIRECT</div>
     <div class="log-box" id="log"></div>
   </div>
-
 </div>
 
 <script>
@@ -182,39 +243,48 @@ let botInterval = null;
 let chartPrices = [];
 let entryPrice = null;
 let currentQty = 0;
+let capital = 100;
 
-// ─── Démarrer ───────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
 function startBot() {
-  const budget = parseFloat(document.getElementById('budget').value);
-  if (!budget || budget < 5) return alert('Entrez un budget valide (minimum $5)');
+  capital = parseFloat(document.getElementById('capital').value) || 100;
+  if (capital < 5) return alert('Budget minimum: $5');
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
   document.getElementById('pair-label').textContent = document.getElementById('pair').value;
-  addLog('🚀 Bot démarré — ' + document.getElementById('pair').value, 'g');
+  addLog('Bot Pro demarre — ' + document.getElementById('pair').value, 'g');
   loadBalance();
+  loadJournalStats();
   analyze();
-  botInterval = setInterval(analyze, 30000); // toutes les 30 secondes
+  analyzeMultiFrame();
+  botInterval = setInterval(function() {
+    analyze();
+    analyzeMultiFrame();
+  }, 30000);
 }
 
-// ─── Arrêter ────────────────────────────────────────────
 function stopBot() {
   clearInterval(botInterval);
   document.getElementById('setup').classList.remove('hidden');
   document.getElementById('dashboard').classList.add('hidden');
-  addLog('⏹ Bot arrêté', 'y');
+  addLog('Bot arrete', 'y');
 }
 
-// ─── Analyse ────────────────────────────────────────────
 async function analyze() {
-  const symbol   = document.getElementById('pair').value;
+  const symbol = document.getElementById('pair').value;
   const interval = document.getElementById('interval').value;
   try {
-    // Prix actuel
-    const priceRes = await fetch(`${SERVER}/api/price/${symbol}`);
+    const priceRes = await fetch(SERVER + '/api/price/' + symbol);
     const priceData = await priceRes.json();
     const price = priceData.price;
+    if (!price) return;
 
-    // Mettre à jour affichage prix
     const prev = chartPrices[chartPrices.length - 1] || price;
     document.getElementById('price-display').textContent = '$' + (parseFloat(price) || 0).toFixed(2);
     document.getElementById('price-display').style.color = price >= prev ? 'var(--green)' : 'var(--red)';
@@ -222,156 +292,218 @@ async function analyze() {
     if (chartPrices.length > 50) chartPrices.shift();
     drawChart(price >= prev);
 
-    // P&L
     if (entryPrice && currentQty > 0) {
       const pnl = (price - entryPrice) * currentQty;
       const el = document.getElementById('pnl-val');
       el.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
       el.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    }
 
-      // Stop Loss automatique
-      const sl = parseFloat(document.getElementById('sl').value);
-      if (price <= entryPrice * (1 - sl)) {
-        addLog(`🛑 STOP LOSS déclenché à $${price.toFixed(2)}`, 'r');
-        showSignal({ action:'VENDRE', confidence:99, reason:`Stop loss de ${sl*100}% atteint. Protection automatique.`, price });
-        return;
+    const res = await fetch(SERVER + '/api/analyze/' + symbol + '?interval=' + interval + '&capital=' + capital);
+    const data = await res.json();
+
+    if (data.indicators) {
+      const ind = data.indicators;
+      document.getElementById('rsi-val').textContent = ind.rsi;
+      document.getElementById('rsi-val').style.color = ind.rsi < 30 ? 'var(--green)' : ind.rsi > 70 ? 'var(--red)' : 'var(--yellow)';
+      document.getElementById('macd-val').textContent = ind.macd.histogram > 0 ? '+' + ind.macd.histogram : ind.macd.histogram;
+      document.getElementById('macd-val').style.color = ind.macd.histogram > 0 ? 'var(--green)' : 'var(--red)';
+      document.getElementById('atr-val').textContent = ind.atr;
+      document.getElementById('ema20-val').textContent = Math.round(ind.ema20).toLocaleString();
+      document.getElementById('ema50-val').textContent = Math.round(ind.ema50).toLocaleString();
+      document.getElementById('ema200-val').textContent = Math.round(ind.ema200).toLocaleString();
+      document.getElementById('bb-upper').textContent = Math.round(ind.bb.upper).toLocaleString();
+      document.getElementById('bb-lower').textContent = Math.round(ind.bb.lower).toLocaleString();
+    }
+
+    if (data.analysis) {
+      const an = data.analysis;
+      document.getElementById('support-val').textContent = Math.round(an.support).toLocaleString();
+      document.getElementById('resist-val').textContent = Math.round(an.resistance).toLocaleString();
+      document.getElementById('ob-val').textContent = an.orderBlock ? an.orderBlock.type + ' OB' : 'Aucun';
+      document.getElementById('fvg-val').textContent = an.fvg ? an.fvg.type + ' FVG' : 'Aucun';
+      document.getElementById('breakout-val').textContent = an.breakout || 'Aucun';
+      document.getElementById('breakout-val').style.color = an.breakout ? 'var(--green)' : '#556';
+      document.getElementById('pullback-val').textContent = an.pullback || 'Aucun';
+      document.getElementById('bull-score').textContent = an.bullishPct + '%';
+      document.getElementById('score-fill').style.width = an.bullishPct + '%';
+      document.getElementById('score-fill').style.background = an.bullishPct > 65 ? 'var(--green)' : an.bullishPct < 35 ? 'var(--red)' : 'var(--yellow)';
+
+      const fib = an.fibonacci;
+      if (fib) {
+        document.getElementById('fib-levels').innerHTML =
+          '0%: $' + Math.round(fib.level0).toLocaleString() + '<br>' +
+          '23.6%: $' + Math.round(fib.level236).toLocaleString() + '<br>' +
+          '38.2%: $' + Math.round(fib.level382).toLocaleString() + '<br>' +
+          '50%: $' + Math.round(fib.level500).toLocaleString() + '<br>' +
+          '61.8%: $' + Math.round(fib.level618).toLocaleString() + '<br>' +
+          '100%: $' + Math.round(fib.level100).toLocaleString();
       }
     }
 
-    // Analyse technique
-    const res = await fetch(`${SERVER}/api/analyze/${symbol}?interval=${interval}`);
-    const data = await res.json();
-
-    document.getElementById('rsi-val').textContent = data.rsi;
-    document.getElementById('rsi-val').style.color = data.rsi < 30 ? 'var(--green)' : data.rsi > 70 ? 'var(--red)' : 'var(--yellow)';
-    document.getElementById('ma7-val').textContent = data.ma7 > 1000 ? Math.round(data.ma7).toLocaleString() : data.ma7;
-    document.getElementById('ma25-val').textContent = data.ma25 > 1000 ? Math.round(data.ma25).toLocaleString() : data.ma25;
-
     const trendEl = document.getElementById('trend-val');
     trendEl.textContent = data.trend;
-    trendEl.className = data.trend === 'HAUSSIÈRE' ? 'trend-up' : 'trend-dn';
-
-    document.getElementById('last-update').textContent = '↻ ' + new Date().toLocaleTimeString('fr-FR');
+    trendEl.style.color = data.trend === 'HAUSSIERE' ? 'var(--green)' : data.trend === 'BAISSIERE' ? 'var(--red)' : 'var(--yellow)';
+    document.getElementById('last-update').textContent = new Date().toLocaleTimeString('fr-FR');
 
     if (data.signal) {
-      addLog(`⚡ Signal: ${data.signal.action} — Confiance ${data.signal.confidence}%`, data.signal.action === 'ACHETER' ? 'g' : 'r');
-      showSignal({ ...data.signal, price });
+      document.getElementById('reasons-list').innerHTML = data.signal.reasons.map(function(r) { return '✓ ' + r; }).join('<br>');
+      addLog('SIGNAL: ' + data.signal.action + ' — Confiance ' + data.signal.confidence + '%', data.signal.action === 'ACHETER' ? 'g' : 'r');
+      showSignal(data.signal, price);
       clearInterval(botInterval);
     }
 
   } catch(e) {
-    addLog('⚠ Erreur: ' + e.message, 'y');
+    addLog('Erreur: ' + e.message, 'y');
   }
 }
 
-// ─── Afficher Signal ────────────────────────────────────
-function showSignal(sig) {
-  const is买 = sig.action === 'ACHETER';
-  const budget = parseFloat(document.getElementById('budget').value) || 0;
-  const pct    = parseFloat(document.getElementById('pct').value);
-  const invest = (budget * pct).toFixed(2);
-  const qty    = (invest / sig.price).toFixed(6);
+async function analyzeMultiFrame() {
+  const symbol = document.getElementById('pair').value;
+  try {
+    const res = await fetch(SERVER + '/api/multiframe/' + symbol + '?capital=' + capital);
+    const data = await res.json();
+    const tfMap = { '5m': 'tf-5m', '15m': 'tf-15m', '1h': 'tf-1h', '4h': 'tf-4h', '1d': 'tf-1d' };
+    Object.keys(tfMap).forEach(function(tf) {
+      const el = document.getElementById(tfMap[tf]);
+      if (data.timeframes && data.timeframes[tf]) {
+        const d = data.timeframes[tf];
+        el.textContent = d.signal;
+        el.style.color = d.signal === 'ACHETER' ? 'var(--green)' : d.signal === 'VENDRE' ? 'var(--red)' : 'var(--yellow)';
+      }
+    });
+    if (data.overall) {
+      const cv = document.getElementById('consensus-val');
+      cv.textContent = data.overall.consensus;
+      cv.style.color = data.overall.consensus === 'HAUSSIER' ? 'var(--green)' : data.overall.consensus === 'BAISSIER' ? 'var(--red)' : 'var(--yellow)';
+      document.getElementById('consensus-pct').textContent = data.overall.bullishPct + '% haussier';
+    }
+  } catch(e) {}
+}
 
+function showSignal(sig, price) {
+  const isB = sig.action === 'ACHETER';
   const box = document.getElementById('signal-box');
   box.className = 'signal-box';
-  box.style.background = is买 ? 'rgba(0,230,118,0.08)' : 'rgba(255,82,82,0.08)';
-  box.style.border = `1px solid ${is买 ? 'rgba(0,230,118,0.4)' : 'rgba(255,82,82,0.4)'}`;
-  box.innerHTML = `
-    <div style="font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:${is买?'var(--green)':'var(--red)'};margin-bottom:8px">
-      ${is买?'🟢':'🔴'} SIGNAL: ${sig.action}
-    </div>
-    <div style="font-size:12px;color:#bbb;margin-bottom:8px;line-height:1.7">${sig.reason}</div>
-    <div style="font-size:11px;color:#667;margin-bottom:6px">
-      Prix: <span style="color:#fff">$${parseFloat(sig.price).toFixed(2)}</span>
-    </div>
-    <div style="font-size:11px;color:#667;margin-bottom:6px">
-      Montant: <span style="color:#fff">$${invest}</span> → <span style="color:#fff">${qty} ${document.getElementById('pair').value.replace('USDT','')}</span>
-    </div>
-    <div style="font-size:11px;color:#667;margin-bottom:14px">
-      Confiance: <span style="color:${is买?'var(--green)':'var(--red)'}">${sig.confidence}%</span>
-    </div>
-    <div style="font-size:13px;font-weight:700;color:${is买?'var(--green)':'var(--red)'};margin-bottom:12px">
-      ⚠ Voulez-vous ${is买?'ACHETER':'VENDRE'} ?
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <button class="btn btn-g" onclick="confirmOrder('${sig.action}','${qty}','${sig.price}')">✓ OUI, CONFIRMER</button>
-      <button class="btn btn-r" onclick="rejectSignal()">✗ NON, IGNORER</button>
-    </div>
-  `;
+  box.style.background = isB ? 'rgba(0,230,118,0.08)' : 'rgba(255,82,82,0.08)';
+  box.style.border = '1px solid ' + (isB ? 'rgba(0,230,118,0.4)' : 'rgba(255,82,82,0.4)');
+  box.innerHTML =
+    '<div style="font-family:Orbitron;font-size:16px;font-weight:900;color:' + (isB ? 'var(--green)' : 'var(--red)') + ';margin-bottom:8px">' +
+    (isB ? 'SIGNAL: ACHETER' : 'SIGNAL: VENDRE') + '</div>' +
+    '<div style="font-size:11px;color:#aaa;margin-bottom:6px;line-height:1.8">' + sig.reasons.slice(0,3).join('<br>') + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;font-size:10px">' +
+    '<div style="background:rgba(255,82,82,0.1);padding:6px;border-radius:6px"><div style="color:#445">STOP LOSS</div><div style="color:var(--red);font-weight:700">$' + sig.stopLoss + '</div></div>' +
+    '<div style="background:rgba(0,230,118,0.1);padding:6px;border-radius:6px"><div style="color:#445">TAKE PROFIT</div><div style="color:var(--green);font-weight:700">$' + sig.takeProfit2 + '</div></div>' +
+    '<div style="background:rgba(255,215,64,0.1);padding:6px;border-radius:6px"><div style="color:#445">RISQUE</div><div style="color:var(--yellow);font-weight:700">$' + sig.riskAmount + '</div></div>' +
+    '<div style="background:rgba(100,181,246,0.1);padding:6px;border-radius:6px"><div style="color:#445">R:R RATIO</div><div style="color:var(--blue);font-weight:700">1:' + sig.riskReward + '</div></div>' +
+    '</div>' +
+    '<div style="font-size:12px;font-weight:700;color:' + (isB ? 'var(--green)' : 'var(--red)') + ';margin-bottom:10px">Confirmez-vous ce trade ?</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+    '<button class="btn btn-g" onclick="confirmOrder(\'' + sig.action + '\',\'' + sig.positionSize + '\',\'' + price + '\',\'' + sig.stopLoss + '\',\'' + sig.takeProfit2 + '\')">✓ OUI</button>' +
+    '<button class="btn btn-r" onclick="rejectSignal()">✗ NON</button>' +
+    '</div>';
   box.classList.remove('hidden');
 }
 
-// ─── Confirmer Ordre ────────────────────────────────────
-async function confirmOrder(side, qty, price) {
+async function confirmOrder(side, qty, price, sl, tp) {
   const symbol = document.getElementById('pair').value;
   try {
-    addLog(`📤 Envoi ordre ${side} ${qty} ${symbol}...`, 'y');
-    const res = await fetch(`${SERVER}/api/order`, {
+    addLog('Envoi ordre ' + side + ' ' + qty + ' ' + symbol, 'y');
+    const res = await fetch(SERVER + '/api/order', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ symbol, side: side === 'ACHETER' ? 'BUY' : 'SELL', quantity: qty }),
+      body: JSON.stringify({ symbol, side: side === 'ACHETER' ? 'BUY' : 'SELL', quantity: qty })
     });
     const data = await res.json();
     if (data.success) {
       if (side === 'ACHETER') { entryPrice = parseFloat(price); currentQty = parseFloat(qty); }
-      else { entryPrice = null; currentQty = 0; document.getElementById('pnl-val').textContent = '$0.00'; }
-      addLog(`✅ Ordre exécuté avec succès — ID: ${data.order.orderId}`, 'g');
+      else { entryPrice = null; currentQty = 0; }
+
+      await fetch(SERVER + '/api/journal', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          symbol, side, price: parseFloat(price), quantity: parseFloat(qty),
+          stopLoss: parseFloat(sl), takeProfit: parseFloat(tp),
+          orderId: data.order.orderId
+        })
+      });
+      loadJournalStats();
+      addLog('Ordre execute — ID: ' + data.order.orderId, 'g');
       loadBalance();
     } else {
-      addLog(`❌ Erreur ordre: ${data.error}`, 'r');
+      addLog('Erreur: ' + data.error, 'r');
     }
-  } catch(e) {
-    addLog('❌ Erreur: ' + e.message, 'r');
-  }
+  } catch(e) { addLog('Erreur: ' + e.message, 'r'); }
   document.getElementById('signal-box').classList.add('hidden');
-  botInterval = setInterval(analyze, 30000);
+  botInterval = setInterval(function() { analyze(); analyzeMultiFrame(); }, 30000);
 }
 
-// ─── Rejeter Signal ─────────────────────────────────────
 function rejectSignal() {
-  addLog('❌ Signal ignoré par l\'utilisateur', 'y');
+  addLog('Signal ignore par utilisateur', 'y');
   document.getElementById('signal-box').classList.add('hidden');
-  botInterval = setInterval(analyze, 30000);
+  botInterval = setInterval(function() { analyze(); analyzeMultiFrame(); }, 30000);
 }
 
-// ─── Solde ──────────────────────────────────────────────
 async function loadBalance() {
   try {
-    const res = await fetch(`${SERVER}/api/balance`);
+    const res = await fetch(SERVER + '/api/balance');
     const data = await res.json();
     const el = document.getElementById('balance-list');
     if (!data.balances || data.balances.length === 0) {
-      el.innerHTML = '<div style="color:#445;font-size:12px">Aucun solde disponible</div>';
-      return;
+      el.innerHTML = '<div style="color:#445">Aucun solde</div>'; return;
     }
-    el.innerHTML = data.balances.slice(0,8).map(b =>
-      `<div class="bal-row">
-        <span style="color:#aaa">${b.asset}</span>
-        <span style="color:#fff">${b.free.toFixed(4)} <span style="color:#445">(+${b.locked.toFixed(4)} bloqué)</span></span>
-      </div>`
-    ).join('');
-  } catch(e) {
-    document.getElementById('balance-list').innerHTML = '<div style="color:var(--red);font-size:12px">Erreur de connexion API</div>';
-  }
+    el.innerHTML = data.balances.slice(0,6).map(function(b) {
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">' +
+        '<span style="color:#aaa">' + b.asset + '</span>' +
+        '<span style="color:#fff">' + b.free.toFixed(4) + '</span></div>';
+    }).join('');
+  } catch(e) { document.getElementById('balance-list').innerHTML = '<div style="color:var(--red)">Erreur API</div>'; }
 }
 
-// ─── Graphique ──────────────────────────────────────────
+async function loadJournalStats() {
+  try {
+    const res = await fetch(SERVER + '/api/journal');
+    const data = await res.json();
+    if (data.stats) {
+      document.getElementById('winrate-val').textContent = data.stats.winRate + '%';
+      document.getElementById('pf-val').textContent = data.stats.profitFactor;
+      document.getElementById('trades-val').textContent = data.stats.totalTrades;
+      const pnlEl = document.getElementById('totalpnl-val');
+      pnlEl.textContent = (data.stats.totalPnl >= 0 ? '+' : '') + '$' + data.stats.totalPnl;
+      pnlEl.style.color = data.stats.totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+    if (data.journal && data.journal.length > 0) {
+      document.getElementById('journal-list').innerHTML = data.journal.slice(-10).reverse().map(function(t) {
+        return '<div style="padding:6px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="color:' + (t.side === 'ACHETER' ? 'var(--green)' : 'var(--red)') + '">' + t.side + ' ' + t.symbol + '</div>' +
+          '<div style="color:#556">Prix: $' + t.price + ' | Qty: ' + t.quantity + '</div>' +
+          '<div style="color:#334">' + new Date(t.date).toLocaleString('fr-FR') + '</div>' +
+          '</div>';
+      }).join('');
+    }
+  } catch(e) {}
+}
+
 function drawChart(up) {
   const canvas = document.getElementById('chart');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-  canvas.height = 80 * window.devicePixelRatio;
+  canvas.height = 70 * window.devicePixelRatio;
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-  const w = canvas.offsetWidth, h = 80;
+  const w = canvas.offsetWidth, h = 70;
   const prices = chartPrices;
   if (prices.length < 2) return;
-  const min = Math.min(...prices), max = Math.max(...prices);
+  const min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
   const color = up ? '#00e676' : '#ff5252';
   ctx.clearRect(0,0,w,h);
-  const pts = prices.map((p,i) => ({ x: (i/(prices.length-1))*w, y: h - ((p-min)/(max-min||1))*h }));
+  const pts = prices.map(function(p,i) {
+    return { x: (i/(prices.length-1))*w, y: h - ((p-min)/(max-min||1))*h };
+  });
   ctx.beginPath();
   ctx.moveTo(pts[0].x, h);
-  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  pts.forEach(function(p) { ctx.lineTo(p.x, p.y); });
   ctx.lineTo(pts[pts.length-1].x, h);
   ctx.closePath();
   const grad = ctx.createLinearGradient(0,0,0,h);
@@ -380,18 +512,17 @@ function drawChart(up) {
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.beginPath();
-  pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+  pts.forEach(function(p,i) { i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y); });
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.stroke();
 }
 
-// ─── Journal ────────────────────────────────────────────
-function addLog(msg, type='d') {
+function addLog(msg, type) {
+  if (!type) type = 'd';
   const el = document.getElementById('log');
   const time = new Date().toLocaleTimeString('fr-FR');
-  const cls = 'log-' + type;
-  el.innerHTML += `<div class="${cls}"><span class="log-d">[${time}]</span> ${msg}</div>`;
+  el.innerHTML += '<div class="log-' + type + '"><span class="log-d">[' + time + ']</span> ' + msg + '</div>';
   el.scrollTop = el.scrollHeight;
 }
 </script>
