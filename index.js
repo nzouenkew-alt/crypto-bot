@@ -22,7 +22,7 @@ function binanceRequest(method, endpoint, params = {}, signed = false) {
       query += `&signature=${signature}`;
     }
     const options = {
-      hostname: 'api.binance.com',
+      hostname: 'data-api.binance.vision',
       path: `/api/v3/${endpoint}${query ? '?' + query : ''}`,
       method,
       headers: {
