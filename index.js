@@ -173,7 +173,8 @@ app.get('*', function(req, res) {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, function() {
+ {app.listen(PORT, () => { console.log('Bot demarre sur le port ' + PORT); https.get('https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendMessage?chat_id=' + TELEGRAM_CHAT_ID + '&text=Bot%20demarre!', function(){}); });
+  
   console.log('Bot demarre sur le port ' + PORT);
   sendTelegram('Bot Crypto demarre! Surveillance du marche en cours. Vous recevrez une alerte quand un signal sera detecte.');
 });
