@@ -357,7 +357,11 @@ app.get('/api/multiframe/:symbol', function(req, res) {
 app.get('/api/balance', function(req, res) {
   binanceRequest('GET', 'account', {}, true)
     .then(function(data) {
-      const balances = data.balances.filter(function(b){return parseFloat(b.free)>0||parseFloat(b.locked)>0;}).map(function(b){return{asset:b.asset,free:parseFloat(b.free),locked:parseFloat(b.locked)};});
+      if (!data.balances) return res.status(500).json({ error: 'Reponse Binance invalide: ' + JSON.stringify(data) });
+const balances = data.balances
+  .filter(function(b){return parseFloat(b.free)>0||parseFloat(b.locked)>0;})
+  .map(function(b){return{asset:b.asset,free:parseFloat(b.free),locked:parseFloat(b.locked)};});
+res.json({ balances });
       res.json({ balances });
     })
     .catch(function(e) { res.status(500).json({ error: e.message }); });
