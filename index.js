@@ -10,8 +10,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const API_KEY = process.env.BINANCE_API_KEY || '';
-const API_SECRET = process.env.BINANCE_API_SECRET || '';
+const KC_KEY = process.env.KUCOIN_API_KEY || '';
+const KC_SECRET = process.env.KUCOIN_API_SECRET || '';
+const KC_PASS = process.env.KUCOIN_PASSPHRASE || '';
 
 // ─── Journal ─────────────────────────────────────────────
 const JOURNAL_FILE = path.join(__dirname, 'journal.json');
@@ -19,11 +20,11 @@ function loadJournal() {
   try { return JSON.parse(fs.readFileSync(JOURNAL_FILE, 'utf8')); }
   catch(e) { return []; }
 }
-function saveJournal(journal) {
-  try { fs.writeFileSync(JOURNAL_FILE, JSON.stringify(journal, null, 2)); } catch(e) {}
+function saveJournal(j) {
+  try { fs.writeFileSync(JOURNAL_FILE, JSON.stringify(j, null, 2)); } catch(e) {}
 }
 
-// ─── Etat du bot ─────────────────────────────────────────
+// ─── Bot State ────────────────────────────────────────────
 let botState = {
   autoMode: false,
   consecutiveLosses: 0,
@@ -37,28 +38,31 @@ let botState = {
   lastSignalTime: 0
 };
 
-// ─── Binance Request ─────────────────────────────────────
-function binanceRequest(method, endpoint, params, signed) {
-  if (!params) params = {};
-  if (!signed) signed = false;
+// ─── KuCoin Request ───────────────────────────────────────
+function kuCoinRequest(method, endpoint, body, signed) {
   return new Promise(function(resolve, reject) {
-    let query = Object.entries(params).map(function(e) { return e[0] + '=' + e[1]; }).join('&');
+    const timestamp = Date.now().toString();
+    const bodyStr = body ? JSON.stringify(body) : '';
+    let headers = { 'Content-Type': 'application/json' };
+
     if (signed) {
-      const timestamp = Date.now();
-      query += (query ? '&' : '') + 'timestamp=' + timestamp;
-      const signature = crypto.createHmac('sha256', API_SECRET).update(query).digest('hex');
-      query += '&signature=' + signature;
+      const strToSign = timestamp + method.toUpperCase() + endpoint + bodyStr;
+      const signature = crypto.createHmac('sha256', KC_SECRET).update(strToSign).digest('base64');
+      const passphrase = crypto.createHmac('sha256', KC_SECRET).update(KC_PASS).digest('base64');
+      headers['KC-API-KEY'] = KC_KEY;
+      headers['KC-API-SIGN'] = signature;
+      headers['KC-API-TIMESTAMP'] = timestamp;
+      headers['KC-API-PASSPHRASE'] = passphrase;
+      headers['KC-API-KEY-VERSION'] = '2';
     }
+
     const options = {
-      hostname: signed ? 'api.binance.com' : 'data-api.binance.vision',
-      path: '/api/v3/' + endpoint + (query ? '?' + query : ''),
+      hostname: 'api.kucoin.com',
+      path: endpoint,
       method: method,
-      headers: {
-        'X-MBX-APIKEY': API_KEY,
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0'
-      }
+      headers: headers
     };
+
     const req = https.request(options, function(res) {
       let data = '';
       res.on('data', function(chunk) { data += chunk; });
@@ -68,8 +72,31 @@ function binanceRequest(method, endpoint, params, signed) {
       });
     });
     req.on('error', reject);
+    if (bodyStr) req.write(bodyStr);
     req.end();
   });
+}
+
+// ─── Prix KuCoin ─────────────────────────────────────────
+function getPrice(symbol) {
+  return kuCoinRequest('GET', '/api/v1/market/orderbook/level1?symbol=' + symbol, null, false)
+    .then(function(data) {
+      if (data.data && data.data.price) return parseFloat(data.data.price);
+      throw new Error('Prix invalide');
+    });
+}
+
+// ─── Chandeliers KuCoin ───────────────────────────────────
+function getKlines(symbol, interval, limit) {
+  const now = Math.floor(Date.now() / 1000);
+  const intervalMap = { '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+  const seconds = intervalMap[interval] || 3600;
+  const start = now - seconds * (limit || 200);
+  return kuCoinRequest('GET', '/api/v1/market/candles?type=' + interval + '&symbol=' + symbol + '&startAt=' + start + '&endAt=' + now, null, false)
+    .then(function(data) {
+      if (!data.data) throw new Error('Pas de donnees');
+      return data.data.reverse();
+    });
 }
 
 // ─── Indicateurs ─────────────────────────────────────────
@@ -78,7 +105,7 @@ function calcEMA(prices, period) {
   const k = 2 / (period + 1);
   let ema = prices.slice(0, period).reduce(function(a, b) { return a + b; }, 0) / period;
   for (let i = period; i < prices.length; i++) ema = prices[i] * k + ema * (1 - k);
-  return parseFloat(ema.toFixed(2));
+  return parseFloat(ema.toFixed(4));
 }
 
 function calcRSI(prices, period) {
@@ -96,9 +123,9 @@ function calcRSI(prices, period) {
 function calcMACD(prices) {
   const ema12 = calcEMA(prices, 12);
   const ema26 = calcEMA(prices, 26);
-  const macdLine = parseFloat((ema12 - ema26).toFixed(2));
-  const signal = parseFloat((macdLine * 0.9).toFixed(2));
-  return { macdLine, signal, histogram: parseFloat((macdLine - signal).toFixed(2)) };
+  const macdLine = parseFloat((ema12 - ema26).toFixed(4));
+  const signal = parseFloat((macdLine * 0.9).toFixed(4));
+  return { macdLine, signal, histogram: parseFloat((macdLine - signal).toFixed(4)) };
 }
 
 function calcBollinger(prices, period) {
@@ -107,7 +134,7 @@ function calcBollinger(prices, period) {
   const slice = prices.slice(-period);
   const middle = slice.reduce(function(a, b) { return a + b; }, 0) / period;
   const std = Math.sqrt(slice.reduce(function(s, p) { return s + Math.pow(p - middle, 2); }, 0) / period);
-  return { upper: parseFloat((middle + 2*std).toFixed(2)), middle: parseFloat(middle.toFixed(2)), lower: parseFloat((middle - 2*std).toFixed(2)) };
+  return { upper: parseFloat((middle + 2*std).toFixed(4)), middle: parseFloat(middle.toFixed(4)), lower: parseFloat((middle - 2*std).toFixed(4)) };
 }
 
 function calcATR(highs, lows, closes, period) {
@@ -118,18 +145,18 @@ function calcATR(highs, lows, closes, period) {
     trs.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
   }
   const slice = trs.slice(-period);
-  return parseFloat((slice.reduce(function(a,b){return a+b;},0)/slice.length).toFixed(2));
+  return parseFloat((slice.reduce(function(a,b){return a+b;},0)/slice.length).toFixed(4));
 }
 
 function calcVWAP(highs, lows, closes, volumes) {
   let tp = 0, vol = 0;
   for (let i = 0; i < closes.length; i++) { tp += ((highs[i]+lows[i]+closes[i])/3)*volumes[i]; vol += volumes[i]; }
-  return parseFloat((tp/vol).toFixed(2));
+  return parseFloat((tp/vol).toFixed(4));
 }
 
 function findSR(prices) {
   const recent = prices.slice(-20);
-  return { support: parseFloat(Math.min.apply(null,recent).toFixed(2)), resistance: parseFloat(Math.max.apply(null,recent).toFixed(2)) };
+  return { support: parseFloat(Math.min.apply(null,recent).toFixed(4)), resistance: parseFloat(Math.max.apply(null,recent).toFixed(4)) };
 }
 
 function calcFib(high, low) {
@@ -158,10 +185,11 @@ function detectFVG(highs, lows) {
 }
 
 function fullAnalysis(klines, capital) {
+  // KuCoin format: [time, open, close, high, low, volume, turnover]
   const opens   = klines.map(function(k){return parseFloat(k[1]);});
-  const highs   = klines.map(function(k){return parseFloat(k[2]);});
-  const lows    = klines.map(function(k){return parseFloat(k[3]);});
-  const closes  = klines.map(function(k){return parseFloat(k[4]);});
+  const closes  = klines.map(function(k){return parseFloat(k[2]);});
+  const highs   = klines.map(function(k){return parseFloat(k[3]);});
+  const lows    = klines.map(function(k){return parseFloat(k[4]);});
   const volumes = klines.map(function(k){return parseFloat(k[5]);});
   const price   = closes[closes.length-1];
 
@@ -193,7 +221,6 @@ function fullAnalysis(klines, capital) {
   const volatility=(atr/price)*100;
   const flatMarket=Math.abs(ema20-ema50)/price*100<0.1;
   const highVolatility=volatility>3;
-
   const total=bull+bear;
   const bullPct=total>0?(bull/total)*100:50;
 
@@ -201,15 +228,14 @@ function fullAnalysis(klines, capital) {
   const riskAmt=CAPITAL*0.01;
   const slDist=atr*1.5;
   const posSize=parseFloat((riskAmt/slDist).toFixed(6));
-  const sl=parseFloat((price-slDist).toFixed(2));
-  const tp=parseFloat((price+slDist*3).toFixed(2));
-  const rr=3;
+  const sl=parseFloat((price-slDist).toFixed(4));
+  const tp=parseFloat((price+slDist*3).toFixed(4));
 
   let signal=null;
   if(!highVolatility&&!flatMarket&&bull>=10&&bullPct>=65) {
-    signal={action:'ACHETER',confidence:Math.min(95,Math.round(bullPct)),reasons,stopLoss:sl,takeProfit:tp,positionSize:posSize,riskReward:rr,riskAmount:parseFloat(riskAmt.toFixed(2))};
+    signal={action:'ACHETER',confidence:Math.min(95,Math.round(bullPct)),reasons,stopLoss:sl,takeProfit:tp,positionSize:posSize,riskReward:3,riskAmount:parseFloat(riskAmt.toFixed(2))};
   } else if(!highVolatility&&!flatMarket&&bear>=10&&bullPct<=35) {
-    signal={action:'VENDRE',confidence:Math.min(95,Math.round(100-bullPct)),reasons:['Tendance baissiere confirmee'],stopLoss:parseFloat((price+slDist).toFixed(2)),takeProfit:parseFloat((price-slDist*3).toFixed(2)),positionSize:posSize,riskReward:rr,riskAmount:parseFloat(riskAmt.toFixed(2))};
+    signal={action:'VENDRE',confidence:Math.min(95,Math.round(100-bullPct)),reasons:['Tendance baissiere confirmee'],stopLoss:parseFloat((price+slDist).toFixed(4)),takeProfit:parseFloat((price-slDist*3).toFixed(4)),positionSize:posSize,riskReward:3,riskAmount:parseFloat(riskAmt.toFixed(2))};
   }
 
   return {
@@ -220,158 +246,104 @@ function fullAnalysis(klines, capital) {
   };
 }
 
-// ─── Execution automatique ────────────────────────────────
-async function autoExecute(signal, symbol) {
-  if (!botState.autoMode) return false;
-  if (botState.consecutiveLosses >= botState.maxConsecutiveLosses) {
-    console.log('Bot arrete: 3 pertes consecutives');
-    botState.autoMode = false;
-    return false;
-  }
-  const now = Date.now();
-  if (now - botState.lastSignalTime < 60000) return false;
-  botState.lastSignalTime = now;
-
+// ─── Routes ──────────────────────────────────────────────
+app.get('/api/price/:symbol', async function(req, res) {
   try {
-    const side = signal.action === 'ACHETER' ? 'BUY' : 'SELL';
-    const order = await binanceRequest('POST', 'order', {
-      symbol: symbol.toUpperCase(),
-      side: side,
-      type: 'MARKET',
-      quantity: signal.positionSize.toFixed(6)
-    }, true);
+    const symbol = req.params.symbol.replace('USDT', '-USDT');
+    const price = await getPrice(symbol);
+    if (botState.autoMode && botState.inPosition) {
+      if (price <= botState.stopLoss) {
+        kuCoinRequest('POST', '/api/v1/orders', { clientOid: Date.now().toString(), side: 'sell', symbol: botState.symbol, type: 'market', size: botState.quantity.toString() }, true)
+          .then(function() { botState.consecutiveLosses++; botState.inPosition = false; console.log('STOP LOSS: ' + price); }).catch(function(){});
+      } else if (price >= botState.takeProfit) {
+        kuCoinRequest('POST', '/api/v1/orders', { clientOid: Date.now().toString(), side: 'sell', symbol: botState.symbol, type: 'market', size: botState.quantity.toString() }, true)
+          .then(function() { botState.consecutiveLosses = 0; botState.inPosition = false; console.log('TAKE PROFIT: ' + price); }).catch(function(){});
+      }
+    }
+    res.json({ price });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
-    if (side === 'BUY') {
-      botState.inPosition = true;
-      botState.entryPrice = signal.price || 0;
-      botState.quantity = signal.positionSize;
-      botState.stopLoss = signal.stopLoss;
-      botState.takeProfit = signal.takeProfit;
-      botState.symbol = symbol;
-    } else {
-      const pnl = (signal.price - botState.entryPrice) * botState.quantity;
-      if (pnl < 0) botState.consecutiveLosses++;
-      else botState.consecutiveLosses = 0;
-      botState.inPosition = false;
+app.get('/api/analyze/:symbol', async function(req, res) {
+  try {
+    const symbol = req.params.symbol.replace('USDT', '-USDT');
+    const interval = req.query.interval || '1h';
+    const capital = parseFloat(req.query.capital) || 100;
+    const klines = await getKlines(symbol, interval, 300);
+    const result = fullAnalysis(klines, capital);
+
+    if (result.signal && botState.autoMode && !botState.inPosition) {
+      const now = Date.now();
+      if (now - botState.lastSignalTime > 60000) {
+        botState.lastSignalTime = now;
+        const side = result.signal.action === 'ACHETER' ? 'buy' : 'sell';
+        kuCoinRequest('POST', '/api/v1/orders', { clientOid: now.toString(), side, symbol, type: 'market', funds: result.signal.riskAmount.toString() }, true)
+          .then(function(order) {
+            if (order.code === '200000') {
+              if (side === 'buy') { botState.inPosition = true; botState.entryPrice = result.price; botState.stopLoss = result.signal.stopLoss; botState.takeProfit = result.signal.takeProfit; botState.symbol = symbol; }
+              result.autoExecuted = true;
+              const journal = loadJournal();
+              journal.push({ id: now, date: new Date().toISOString(), symbol: req.params.symbol, side: result.signal.action, price: result.price, quantity: result.signal.positionSize, stopLoss: result.signal.stopLoss, takeProfit: result.signal.takeProfit, mode: 'AUTO' });
+              saveJournal(journal);
+            }
+          }).catch(function(){});
+      }
     }
 
-    const journal = loadJournal();
-    journal.push({
-      id: Date.now(), date: new Date().toISOString(),
-      symbol, side: signal.action, price: signal.price || 0,
-      quantity: signal.positionSize, stopLoss: signal.stopLoss,
-      takeProfit: signal.takeProfit, mode: 'AUTO',
-      orderId: order.orderId
-    });
-    saveJournal(journal);
-    return true;
-  } catch(e) {
-    console.log('Erreur auto execute: ' + e.message);
-    return false;
-  }
-}
-
-// ─── Routes ──────────────────────────────────────────────
-app.get('/api/price/:symbol', function(req, res) {
-  binanceRequest('GET', 'ticker/price', { symbol: req.params.symbol.toUpperCase() })
-    .then(function(data) {
-      const price = parseFloat(data.price);
-      if (!price || isNaN(price)) return res.status(500).json({ error: 'Prix invalide' });
-
-      // Verification SL/TP en mode auto
-      if (botState.autoMode && botState.inPosition) {
-        if (price <= botState.stopLoss) {
-          binanceRequest('POST', 'order', { symbol: botState.symbol, side: 'SELL', type: 'MARKET', quantity: botState.quantity.toFixed(6) }, true)
-            .then(function() {
-              botState.consecutiveLosses++;
-              botState.inPosition = false;
-              console.log('STOP LOSS declenche automatiquement a ' + price);
-            }).catch(function(){});
-        } else if (price >= botState.takeProfit) {
-          binanceRequest('POST', 'order', { symbol: botState.symbol, side: 'SELL', type: 'MARKET', quantity: botState.quantity.toFixed(6) }, true)
-            .then(function() {
-              botState.consecutiveLosses = 0;
-              botState.inPosition = false;
-              console.log('TAKE PROFIT atteint automatiquement a ' + price);
-            }).catch(function(){});
-        }
-      }
-      res.json({ price });
-    })
-    .catch(function(e) { res.status(500).json({ error: e.message }); });
+    if (botState.consecutiveLosses >= botState.maxConsecutiveLosses) { result.autoStopped = true; botState.autoMode = false; }
+    result.botState = { autoMode: botState.autoMode, consecutiveLosses: botState.consecutiveLosses, inPosition: botState.inPosition };
+    res.json(result);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/analyze/:symbol', function(req, res) {
-  const interval = req.query.interval || '1h';
-  const capital = parseFloat(req.query.capital) || 100;
-  binanceRequest('GET', 'klines', { symbol: req.params.symbol.toUpperCase(), interval, limit: 300 })
-    .then(async function(data) {
-      const result = fullAnalysis(data, capital);
-
-      // Mode automatique
-      if (result.signal && botState.autoMode && !botState.inPosition) {
-        const executed = await autoExecute(result.signal, req.params.symbol);
-        result.autoExecuted = executed;
-      }
-
-      // Verification pertes consecutives
-      if (botState.consecutiveLosses >= botState.maxConsecutiveLosses) {
-        result.autoStopped = true;
-        botState.autoMode = false;
-      }
-
-      result.botState = {
-        autoMode: botState.autoMode,
-        consecutiveLosses: botState.consecutiveLosses,
-        inPosition: botState.inPosition
-      };
-      res.json(result);
-    })
-    .catch(function(e) { res.status(500).json({ error: e.message }); });
-});
-
-app.get('/api/multiframe/:symbol', function(req, res) {
-  const symbol = req.params.symbol.toUpperCase();
-  const capital = parseFloat(req.query.capital) || 100;
-  const timeframes = ['5m','15m','1h','4h','1d'];
-  Promise.all(timeframes.map(function(tf) {
-    return binanceRequest('GET', 'klines', { symbol, interval: tf, limit: 200 })
-      .then(function(data) { return { tf, result: fullAnalysis(data, capital) }; })
-      .catch(function() { return { tf, result: null }; });
-  })).then(function(results) {
+app.get('/api/multiframe/:symbol', async function(req, res) {
+  try {
+    const symbol = req.params.symbol.replace('USDT', '-USDT');
+    const capital = parseFloat(req.query.capital) || 100;
+    const timeframes = ['5m','15m','1h','4h','1d'];
+    const results = await Promise.all(timeframes.map(async function(tf) {
+      try {
+        const klines = await getKlines(symbol, tf, 200);
+        return { tf, result: fullAnalysis(klines, capital) };
+      } catch(e) { return { tf, result: null }; }
+    }));
     const summary = {};
     let tb=0, tr=0, count=0;
     results.forEach(function(r) {
       if (r.result) {
         summary[r.tf] = { trend: r.result.trend, signal: r.result.signal ? r.result.signal.action : 'NEUTRE', bullishPct: r.result.analysis.bullishPct, rsi: r.result.indicators.rsi };
-        tb += r.result.analysis.bullishScore;
-        tr += r.result.analysis.bearishScore;
-        count++;
+        tb += r.result.analysis.bullishScore; tr += r.result.analysis.bearishScore; count++;
       }
     });
     const pct = count>0?(tb/(tb+tr))*100:50;
     res.json({ timeframes: summary, overall: { bullishPct: parseFloat(pct.toFixed(1)), consensus: pct>65?'HAUSSIER':pct<35?'BAISSIER':'NEUTRE' } });
-  });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/balance', function(req, res) {
-  binanceRequest('GET', 'account', {}, true)
-    .then(function(data) {
-      if (!data.balances) return res.status(500).json({ error: 'Reponse Binance invalide: ' + JSON.stringify(data) });
-const balances = data.balances
-  .filter(function(b){return parseFloat(b.free)>0||parseFloat(b.locked)>0;})
-  .map(function(b){return{asset:b.asset,free:parseFloat(b.free),locked:parseFloat(b.locked)};});
-res.json({ balances });
-      res.json({ balances });
-    })
-    .catch(function(e) { res.status(500).json({ error: e.message }); });
+app.get('/api/balance', async function(req, res) {
+  try {
+    const data = await kuCoinRequest('GET', '/api/v1/accounts?type=trade', null, true);
+    if (!data.data) return res.status(500).json({ error: 'Erreur KuCoin: ' + JSON.stringify(data) });
+    const balances = data.data.filter(function(b) { return parseFloat(b.available) > 0; })
+      .map(function(b) { return { asset: b.currency, free: parseFloat(b.available), locked: parseFloat(b.holds) }; });
+    res.json({ balances });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/order', function(req, res) {
-  const { symbol, side, quantity } = req.body;
-  binanceRequest('POST', 'order', { symbol: symbol.toUpperCase(), side: side.toUpperCase(), type: 'MARKET', quantity: parseFloat(quantity).toFixed(6) }, true)
-    .then(function(order) { res.json({ success: true, order }); })
-    .catch(function(e) { res.status(500).json({ error: e.message }); });
+app.post('/api/order', async function(req, res) {
+  try {
+    const { symbol, side, quantity } = req.body;
+    const kcSymbol = symbol.replace('USDT', '-USDT');
+    const order = await kuCoinRequest('POST', '/api/v1/orders', {
+      clientOid: Date.now().toString(),
+      side: side === 'BUY' ? 'buy' : 'sell',
+      symbol: kcSymbol,
+      type: 'market',
+      size: quantity.toString()
+    }, true);
+    if (order.code === '200000') res.json({ success: true, order: { orderId: order.data.orderId } });
+    else res.status(500).json({ error: order.msg });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/automode', function(req, res) {
@@ -381,7 +353,6 @@ app.get('/api/automode', function(req, res) {
 app.post('/api/automode', function(req, res) {
   botState.autoMode = req.body.enabled;
   if (botState.autoMode) botState.consecutiveLosses = 0;
-  console.log('Mode auto: ' + (botState.autoMode ? 'ACTIVE' : 'DESACTIVE'));
   res.json({ autoMode: botState.autoMode });
 });
 
@@ -391,23 +362,14 @@ app.get('/api/journal', function(req, res) {
   const wins = closed.filter(function(t){return t.pnl>0;}).length;
   const gp = closed.filter(function(t){return t.pnl>0;}).reduce(function(s,t){return s+t.pnl;},0);
   const gl = Math.abs(closed.filter(function(t){return t.pnl<0;}).reduce(function(s,t){return s+t.pnl;},0));
-  res.json({
-    journal,
-    stats: {
-      totalTrades: journal.length,
-      winRate: closed.length>0?parseFloat((wins/closed.length*100).toFixed(1)):0,
-      profitFactor: gl>0?parseFloat((gp/gl).toFixed(2)):0,
-      totalPnl: parseFloat(journal.reduce(function(s,t){return s+(t.pnl||0);},0).toFixed(2))
-    }
-  });
+  res.json({ journal, stats: { totalTrades: journal.length, winRate: closed.length>0?parseFloat((wins/closed.length*100).toFixed(1)):0, profitFactor: gl>0?parseFloat((gp/gl).toFixed(2)):0, totalPnl: parseFloat(journal.reduce(function(s,t){return s+(t.pnl||0);},0).toFixed(2)) } });
 });
 
 app.post('/api/journal', function(req, res) {
   const journal = loadJournal();
-  const trade = Object.assign({ id: Date.now(), date: new Date().toISOString() }, req.body);
-  journal.push(trade);
+  journal.push(Object.assign({ id: Date.now(), date: new Date().toISOString() }, req.body));
   saveJournal(journal);
-  res.json({ success: true, trade });
+  res.json({ success: true });
 });
 
 app.get('*', function(req, res) {
@@ -415,6 +377,4 @@ app.get('*', function(req, res) {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, function() {
-  console.log('Bot Pro demarre sur le port ' + PORT);
-});
+app.listen(PORT, function() { console.log('Bot KuCoin demarre sur le port ' + PORT); });
