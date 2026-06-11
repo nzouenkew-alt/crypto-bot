@@ -90,9 +90,11 @@ function getPrice(symbol) {
 function getKlines(symbol, interval, limit) {
   const now = Math.floor(Date.now() / 1000);
   const intervalMap = { '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
-  const seconds = intervalMap[interval] || 3600;
-  const start = now - seconds * (limit || 200);
-  return kuCoinRequest('GET', '/api/v1/market/candles?type=' + interval + '&symbol=' + symbol + '&startAt=' + start + '&endAt=' + now, null, false)
+const kcIntervalMap = { '5m': '5min', '15m': '15min', '1h': '1hour', '4h': '4hour', '1d': '1day' };
+const kcInterval = kcIntervalMap[interval] || '1hour';
+const seconds = intervalMap[interval] || 3600;
+const start = now - seconds * (limit || 200);
+return kuCoinRequest('GET', '/api/v1/market/candles?type=' + kcInterval + '&symbol='
     .then(function(data) {
       if (!data.data) throw new Error('Pas de donnees');
       return data.data.reverse();
