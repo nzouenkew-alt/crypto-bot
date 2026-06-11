@@ -96,7 +96,7 @@ const seconds = intervalMap[interval] || 3600;
 const start = now - seconds * (limit || 200);
 return kuCoinRequest('GET', '/api/v1/market/candles?type=' + kcInterval + '&symbol=' + symbol + '&startAt=' + start + '&endAt=' + now, null, false)
     .then(function(data) {
-      if (!data.data) throw new Error('Pas de donnees');
+      if (!data.data || data.data.length === 0) throw new Error('Pas de donnees: ' + JSON.stringify(data));
       return data.data.reverse();
     });
 }
