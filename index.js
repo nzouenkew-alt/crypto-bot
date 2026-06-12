@@ -88,12 +88,9 @@ function getPrice(symbol) {
 
 // ─── Chandeliers KuCoin ───────────────────────────────────
 function getKlines(symbol, interval, limit) {
-  const now = Math.floor(Date.now() / 1000);
   const intervalMap = { '5m': '5min', '15m': '15min', '1h': '1hour', '4h': '4hour', '1d': '1day' };
-const kcIntervalMap = { '5m': '5min', '15m': '15min', '1h': '1hour', '4h': '4hour', '1d': '1day' };
-const kcInterval = kcIntervalMap[interval] || '1hour';
-const kcInterval = intervalMap[interval] || '1hour';
-return kuCoinRequest('GET', '/api/v1/market/candles?type=' + kcInterval + '&symbol=' + symbol + '&startAt=' + start + '&endAt=' + now, null, false)
+  const kcInterval = intervalMap[interval] || '1hour';
+  return kuCoinRequest('GET', '/api/v1/market/candles?type=' + kcInterval + '&symbol=' + symbol, null, false)
     .then(function(data) {
       if (!data.data || data.data.length === 0) throw new Error('Pas de donnees: ' + JSON.stringify(data));
       return data.data.reverse();
