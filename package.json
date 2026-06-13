@@ -1,13 +1,14 @@
 {
-  "name": "crypto-bot-binance",
+  "name": "crypto-bot-pro",
   "version": "1.0.0",
-  "description": "Bot de trading Binance",
+  "description": "Bot de trading KuCoin Pro",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "mongodb": "^6.7.0"
   }
 }
