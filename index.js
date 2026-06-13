@@ -433,6 +433,12 @@ app.post('/api/journal', async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/test-order', async function(req, res) {
+  try {
+    const data = await kuCoinRequest('GET', '/api/v1/accounts?type=trade', null, true);
+    res.json({ success: true, data });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
