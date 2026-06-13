@@ -358,8 +358,10 @@ app.get('/api/balance', async function(req, res) {
 
 app.post('/api/order', async function(req, res) {
   try {
-    const { symbol, side, quantity } = req.body;
+    const { symbol, side, quantity, stopLoss, takeProfit } = req.body;
     const kcSymbol = symbol.replace('USDT', '-USDT');
+
+    // 1. Ordre marche - execution immediate
     const order = await kuCoinRequest('POST', '/api/v1/orders', {
       clientOid: Date.now().toString(),
       side: side === 'BUY' ? 'buy' : 'sell',
@@ -367,8 +369,38 @@ app.post('/api/order', async function(req, res) {
       type: 'market',
       size: quantity.toString()
     }, true);
-    if (order.code === '200000') res.json({ success: true, order: { orderId: order.data.orderId } });
-    else res.status(500).json({ error: order.msg });
+
+    if (order.code !== '200000') return res.status(500).json({ error: order.msg });
+
+    // 2. Si achat -> placer SL et TP visibles sur graphique
+    if (side === 'BUY' && stopLoss && takeProfit) {
+      // Stop Loss - ordre limite visible
+      await kuCoinRequest('POST', '/api/v1/orders', {
+        clientOid: (Date.now() + 1).toString(),
+        side: 'sell',
+        symbol: kcSymbol,
+        type: 'limit',
+        price: stopLoss.toString(),
+        size: quantity.toString(),
+        timeInForce: 'GTC',
+        stop: 'loss',
+        stopPrice: stopLoss.toString(),
+        stopPriceType: 'TP'
+      }, true).catch(function(){});
+
+      // Take Profit - ordre limite visible
+      await kuCoinRequest('POST', '/api/v1/orders', {
+        clientOid: (Date.now() + 2).toString(),
+        side: 'sell',
+        symbol: kcSymbol,
+        type: 'limit',
+        price: takeProfit.toString(),
+        size: quantity.toString(),
+        timeInForce: 'GTC'
+      }, true).catch(function(){});
+    }
+
+    res.json({ success: true, order: { orderId: order.data.orderId } });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
