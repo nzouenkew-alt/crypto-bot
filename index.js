@@ -3,7 +3,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const https = require('https');
 const path = require('path');
-const fs = require('fs');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 app.use(cors());
@@ -13,15 +13,43 @@ app.use(express.static(path.join(__dirname, 'public')));
 const KC_KEY = process.env.KUCOIN_API_KEY || '';
 const KC_SECRET = process.env.KUCOIN_API_SECRET || '';
 const KC_PASS = process.env.KUCOIN_PASSPHRASE || '';
+const MONGODB_URI = process.env.MONGODB_URI || '';
 
-// ─── Journal ─────────────────────────────────────────────
-const JOURNAL_FILE = path.join(__dirname, 'journal.json');
-function loadJournal() {
-  try { return JSON.parse(fs.readFileSync(JOURNAL_FILE, 'utf8')); }
-  catch(e) { return []; }
+// ─── MongoDB ──────────────────────────────────────────────
+let db = null;
+async function connectDB() {
+  if (!MONGODB_URI) return null;
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    db = client.db('cryptobot');
+    console.log('MongoDB connecte!');
+    return db;
+  } catch(e) {
+    console.log('MongoDB erreur: ' + e.message);
+    return null;
+  }
 }
-function saveJournal(j) {
-  try { fs.writeFileSync(JOURNAL_FILE, JSON.stringify(j, null, 2)); } catch(e) {}
+connectDB();
+
+async function loadJournal() {
+  try {
+    if (db) {
+      const trades = await db.collection('trades').find({}).sort({date:-1}).toArray();
+      return trades;
+    }
+  } catch(e) {}
+  return [];
+}
+
+async function saveJournal(trade) {
+  try {
+    if (db) {
+      await db.collection('trades').insertOne(trade);
+      return true;
+    }
+  } catch(e) {}
+  return false;
 }
 
 // ─── Bot State ────────────────────────────────────────────
@@ -88,11 +116,13 @@ function getPrice(symbol) {
 
 // ─── Chandeliers KuCoin ───────────────────────────────────
 function getKlines(symbol, interval, limit) {
-  const intervalMap = { '5m': '5min', '15m': '15min', '1h': '1hour', '4h': '4hour', '1d': '1day' };
-  const kcInterval = intervalMap[interval] || '1hour';
-  return kuCoinRequest('GET', '/api/v1/market/candles?type=' + kcInterval + '&symbol=' + symbol, null, false)
+  const now = Math.floor(Date.now() / 1000);
+  const intervalMap = { '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+  const seconds = intervalMap[interval] || 3600;
+  const start = now - seconds * (limit || 200);
+  return kuCoinRequest('GET', '/api/v1/market/candles?type=' + interval + '&symbol=' + symbol + '&startAt=' + start + '&endAt=' + now, null, false)
     .then(function(data) {
-      if (!data.data || data.data.length === 0) throw new Error('Pas de donnees: ' + JSON.stringify(data));
+      if (!data.data) throw new Error('Pas de donnees');
       return data.data.reverse();
     });
 }
@@ -280,9 +310,7 @@ app.get('/api/analyze/:symbol', async function(req, res) {
             if (order.code === '200000') {
               if (side === 'buy') { botState.inPosition = true; botState.entryPrice = result.price; botState.stopLoss = result.signal.stopLoss; botState.takeProfit = result.signal.takeProfit; botState.symbol = symbol; }
               result.autoExecuted = true;
-              const journal = loadJournal();
-              journal.push({ id: now, date: new Date().toISOString(), symbol: req.params.symbol, side: result.signal.action, price: result.price, quantity: result.signal.positionSize, stopLoss: result.signal.stopLoss, takeProfit: result.signal.takeProfit, mode: 'AUTO' });
-              saveJournal(journal);
+              await saveJournal({ id: now, date: new Date().toISOString(), symbol: req.params.symbol, side: result.signal.action, price: result.price, quantity: result.signal.positionSize, stopLoss: result.signal.stopLoss, takeProfit: result.signal.takeProfit, mode: 'AUTO' });
             }
           }).catch(function(){});
       }
@@ -354,20 +382,23 @@ app.post('/api/automode', function(req, res) {
   res.json({ autoMode: botState.autoMode });
 });
 
-app.get('/api/journal', function(req, res) {
-  const journal = loadJournal();
-  const closed = journal.filter(function(t){return t.pnl!==undefined;});
-  const wins = closed.filter(function(t){return t.pnl>0;}).length;
-  const gp = closed.filter(function(t){return t.pnl>0;}).reduce(function(s,t){return s+t.pnl;},0);
-  const gl = Math.abs(closed.filter(function(t){return t.pnl<0;}).reduce(function(s,t){return s+t.pnl;},0));
-  res.json({ journal, stats: { totalTrades: journal.length, winRate: closed.length>0?parseFloat((wins/closed.length*100).toFixed(1)):0, profitFactor: gl>0?parseFloat((gp/gl).toFixed(2)):0, totalPnl: parseFloat(journal.reduce(function(s,t){return s+(t.pnl||0);},0).toFixed(2)) } });
+app.get('/api/journal', async function(req, res) {
+  try {
+    const journal = await loadJournal();
+    const closed = journal.filter(function(t){return t.pnl!==undefined;});
+    const wins = closed.filter(function(t){return t.pnl>0;}).length;
+    const gp = closed.filter(function(t){return t.pnl>0;}).reduce(function(s,t){return s+t.pnl;},0);
+    const gl = Math.abs(closed.filter(function(t){return t.pnl<0;}).reduce(function(s,t){return s+t.pnl;},0));
+    res.json({ journal, stats: { totalTrades: journal.length, winRate: closed.length>0?parseFloat((wins/closed.length*100).toFixed(1)):0, profitFactor: gl>0?parseFloat((gp/gl).toFixed(2)):0, totalPnl: parseFloat(journal.reduce(function(s,t){return s+(t.pnl||0);},0).toFixed(2)) } });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/journal', function(req, res) {
-  const journal = loadJournal();
-  journal.push(Object.assign({ id: Date.now(), date: new Date().toISOString() }, req.body));
-  saveJournal(journal);
-  res.json({ success: true });
+app.post('/api/journal', async function(req, res) {
+  try {
+    const trade = Object.assign({ id: Date.now(), date: new Date().toISOString() }, req.body);
+    await saveJournal(trade);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('*', function(req, res) {
